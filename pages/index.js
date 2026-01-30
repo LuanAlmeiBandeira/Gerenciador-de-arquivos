@@ -11,7 +11,9 @@ export default function Home() {
     const [novoCpf, setNovoCpf] = useState("");
     const [cpfBusca, setCpfBusca] = useState("");
     const [resultado, setResultado] = useState(null);
-    const [file, setFile] = useState(null);
+
+    // Agora 'files' guardará objetos com { arquivo, tipoDoc }
+    const [files, setFiles] = useState([]);
     const [tipo, setTipo] = useState("CPF");
 
     useEffect(() => {
@@ -31,12 +33,23 @@ export default function Home() {
 
     const handleBusca = async () => {
         if (!cpfBusca) return alert("Digite um CPF!");
-        const res = await fetch(`/api/arquivos?cpf=${cpfBusca}`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (!res.ok) return alert(data.error);
-        setResultado(data);
+
+        try {
+            const res = await fetch(`/api/arquivos?cpf=${cpfBusca}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const contentType = res.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                const data = await res.json();
+                if (!res.ok) return alert(data.error || "Erro na busca.");
+                setResultado(data);
+            } else {
+                alert("Erro interno no servidor ou CPF não encontrado.");
+            }
+        } catch (error) {
+            alert("Não foi possível conectar ao servidor.");
+        }
     };
 
     const gerarNomeAutomatico = (tipoDoc, cpfUsuario) => {
@@ -50,28 +63,47 @@ export default function Home() {
         return mapTipos[tipoDoc] || `documento_${cpfUsuario}.pdf`;
     };
 
+    // FUNÇÃO PARA ADICIONAR AO "CARRINHO" DE UPLOADS
+    const handleFileSelection = (e) => {
+        const selecionados = Array.from(e.target.files);
+        const novosArquivos = selecionados.map(f => ({
+            arquivo: f,
+            tipoDoc: tipo // Vincula o tipo que está selecionado no <select> no momento
+        }));
+
+        setFiles([...files, ...novosArquivos]);
+        // Opcional: resetar o input para permitir selecionar o mesmo arquivo se necessário
+        e.target.value = null;
+    };
+
     const handleCadastrarPdf = async () => {
-        if (!novoCpf || !file) return alert("Digite o CPF e escolha um arquivo PDF!");
-
-        const formData = new FormData();
-        formData.append("cpf", novoCpf);
-        formData.append("tipo_documento", tipo);
-        formData.append("novo_nome_automatico", gerarNomeAutomatico(tipo, novoCpf));
-        formData.append("file", file);
-
-        const res = await fetch("/api/arquivos", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-            body: formData
-        });
-
-        if (!res.ok) {
-            const data = await res.json();
-            return alert(data.error);
+        if (!novoCpf || files.length === 0) {
+            return alert("Digite o CPF e selecione os arquivos primeiro!");
         }
 
-        alert("Arquivo PDF cadastrado com sucesso!");
-        setFile(null);
+        let sucessos = 0;
+
+        for (const item of files) {
+            const formData = new FormData();
+            formData.append("cpf", novoCpf);
+            formData.append("tipo_documento", item.tipoDoc);
+            formData.append("novo_nome_automatico", gerarNomeAutomatico(item.tipoDoc, novoCpf));
+            formData.append("file", item.arquivo);
+
+            try {
+                const res = await fetch("/api/arquivos", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                    body: formData
+                });
+                if (res.ok) sucessos++;
+            } catch (err) {
+                console.error("Erro no upload:", err);
+            }
+        }
+
+        alert(`${sucessos} documento(s) enviados com sucesso!`);
+        setFiles([]);
         setNovoCpf("");
         handleBusca();
     };
@@ -87,24 +119,14 @@ export default function Home() {
     };
 
     const handleUpdate = async (id) => {
-        const novoTipo = prompt("Digite o novo tipo do documento (Ex: RG, CPF, Histórico):");
+        const novoTipo = prompt("Digite o novo tipo do documento:");
         if (!novoTipo) return;
-
         const res = await fetch(`/api/arquivos/${id}`, {
             method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`
-            },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify({ tipo_documento: novoTipo })
         });
-
-        if (res.ok) {
-            alert("Tipo atualizado!");
-            handleBusca();
-        } else {
-            alert("Erro ao atualizar");
-        }
+        if (res.ok) { alert("Tipo atualizado!"); handleBusca(); }
     };
 
     if (carregando) return <p>Carregando...</p>;
@@ -113,110 +135,121 @@ export default function Home() {
         <div className="container">
             <header>
                 <h1>📄 Gerenciador de Arquivos</h1>
-                <p>Envie, busque e organize seus documentos PDF de forma simples</p>
+                <p>Acumule os documentos e envie todos de uma vez</p>
                 <button onClick={handleLogout} className="btn-logout">Sair</button>
             </header>
 
             <main>
                 <section className="buscar">
-                    <label htmlFor="busca-cpf" className="sr-only">Buscar por CPF:</label>
                     <input
                         id="busca-cpf"
                         placeholder="Digite o CPF para buscar"
                         value={cpfBusca}
                         onChange={(e) => setCpfBusca(e.target.value)}
                     />
-                    <button onClick={handleBusca}>Buscar Documentos</button>
+                    {/* Adicione a classe aqui */}
+                    <button onClick={handleBusca} className="btn-busca">Buscar Documentos</button>
                 </section>
 
                 <section className="novo-arquivo">
-                    <h3>Cadastrar Novo PDF</h3>
+                    <h3>1. Configure o Titular e o Tipo</h3>
                     <div className="form-group">
                         <input
-                            aria-label="CPF para cadastro"
                             placeholder="CPF do titular"
                             value={novoCpf}
                             onChange={(e) => setNovoCpf(e.target.value)}
                         />
-                        <select
-                            aria-label="Tipo de documento"
-                            value={tipo}
-                            onChange={(e) => setTipo(e.target.value)}
-                        >
+
+                        <select value={tipo} onChange={(e) => setTipo(e.target.value)}>
                             <option>CPF</option>
                             <option>RG/CIN</option>
                             <option>Comprovante Escolar-Histórico</option>
                             <option>Certidão de Nascimento</option>
                             <option>Comprovante de Residência</option>
                         </select>
+
                         <input
                             type="file"
+                            id="file-upload"
                             accept=".pdf"
-                            aria-label="Selecionar PDF"
-                            onChange={(e) => setFile(e.target.files[0])}
+                            multiple
+                            style={{ display: 'none' }}
+                            onChange={handleFileSelection}
                         />
-                        <button onClick={handleCadastrarPdf} className="btn-success">Cadastrar PDF</button>
+                        <button
+                            type="button"
+                            className="btn-select"
+                            onClick={() => document.getElementById('file-upload').click()}
+                        >
+                            ➕ Adicionar à Lista
+                        </button>
                     </div>
+
+                    {files.length > 0 && (
+                        <div className="file-list">
+                            <strong>Arquivos na fila para envio:</strong>
+                            <ul>
+                                {files.map((f, i) => (
+                                    <li key={i}>
+                                        <span className="badge">{f.tipoDoc}</span> {f.arquivo.name}
+                                        <button onClick={() => setFiles(files.filter((_, index) => index !== i))} className="btn-remove">x</button>
+                                    </li>
+                                ))}
+                            </ul>
+                            <button onClick={handleCadastrarPdf} className="btn-success">
+                                🚀 Enviar Todos Agora ({files.length})
+                            </button>
+                        </div>
+                    )}
                 </section>
 
                 {resultado && (
                     <section className="lista">
-                        <h2>Usuário: {resultado.usuario.nome || "Não identificado"} | CPF: {resultado.usuario.cpf}</h2>
+                        <h2>Usuário: {resultado.usuario.cpf}</h2>
                         <div className="arquivos-grid">
-                            {resultado.arquivos.length > 0 ? (
-                                resultado.arquivos.map((a) => (
-                                    <div className="card" key={a.id}>
-                                        <div className="arquivo-info">
-                                            <strong>{a.tipo_documento}:</strong>
-                                            {/* Link para o arquivo usando o nome limpo armazenado no banco */}
-                                            <a href={a.caminho_arquivo} target="_blank" rel="noopener noreferrer">
-                                                {a.nome_armazenado}
-                                            </a>
-                                        </div>
-                                        <div className="arquivo-actions">
-                                            <button
-                                                onClick={() => handleUpdate(a.id)}
-                                                className="btn-edit"
-                                                aria-label={`Editar tipo do documento ${a.tipo_documento}`}
-                                            >
-                                                Editar
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeletar(a.id)}
-                                                className="btn-delete"
-                                                aria-label={`Deletar documento ${a.tipo_documento}`}
-                                            >
-                                                Deletar
-                                            </button>
-                                        </div>
+                            {resultado.arquivos.map((a) => (
+                                <div className="card" key={a.id}>
+                                    <div className="arquivo-info">
+                                        <strong>{a.tipo_documento}:</strong>
+                                        <a href={a.caminho_arquivo} target="_blank" rel="noopener noreferrer">{a.nome_armazenado}</a>
                                     </div>
-                                ))
-                            ) : (
-                                <p>Nenhum arquivo encontrado para este CPF.</p>
-                            )}
+                                    <div className="arquivo-actions">
+                                        <button onClick={() => handleUpdate(a.id)} className="btn-edit">Editar</button>
+                                        <button onClick={() => handleDeletar(a.id)} className="btn-delete">Deletar</button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </section>
                 )}
             </main>
 
             <style jsx>{`
-                .container { font-family: sans-serif; background: #f4f4f9; min-height: 100vh; padding: 40px; color: #333; }
+                .container { font-family: sans-serif; background: #f4f4f9; min-height: 100vh; padding: 40px; }
                 header { text-align: center; margin-bottom: 40px; }
-                h1 { color: #4a4a8c; }
-                .btn-logout { background: #999; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-top: 10px; }
-                .buscar, .novo-arquivo { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
+                .buscar, .novo-arquivo { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
                 input, select { padding: 10px; border-radius: 5px; border: 1px solid #ccc; margin: 5px; }
-                button { padding: 10px 20px; border-radius: 5px; background: #4a4a8c; color: white; border: none; cursor: pointer; font-weight: bold; }
-                button:hover { opacity: 0.9; }
-                button:focus { outline: 3px solid #ffc107; }
-                .arquivos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
-                .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; }
-                .arquivo-info a { display: block; margin-top: 10px; color: #4a4a8c; font-weight: bold; word-break: break-all; }
-                .arquivo-actions { margin-top: 15px; display: flex; gap: 10px; border-top: 1px solid #eee; padding-top: 10px; }
-                .btn-edit { background: #ffc107; color: #333; flex: 1; }
-                .btn-delete { background: #d7263d; color: white; flex: 1; }
-                .btn-success { background: #28a745; }
-                .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+                button { padding: 10px 20px; border-radius: 5px; color: white; border: none; cursor: pointer; font-weight: bold; margin: 5px; }
+                .btn-select { background: #6c757d; }
+                .btn-success { background: #28a745; width: 100%; margin-top: 15px; font-size: 1.1rem; }
+                .btn-logout { background: #999; }
+                .btn-edit { background: #ffc107; color: #333; }
+                .btn-delete { background: #d7263d; }
+                .btn-remove { background: none; color: red; border: none; cursor: pointer; font-size: 1rem; padding: 0 5px; }
+                .file-list { margin-top: 20px; text-align: left; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px dashed #ccc; }
+                .file-list ul { list-style: none; padding: 0; }
+                .file-list li { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #eee; }
+                .badge { background: #4a4a8c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; margin-right: 10px; text-transform: uppercase; }
+                .arquivos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+                .card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+                .btn-busca {
+                background: #f6f7f8ff; /* Cor azul (exemplo) */
+                color: black;
+                }
+
+                .btn-busca:hover {
+                background: #e8ebf0ff; /* Cor um pouco mais escura ao passar o mouse */
+                }
             `}</style>
         </div>
     );
