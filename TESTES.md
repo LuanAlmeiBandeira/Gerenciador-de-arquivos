@@ -2,7 +2,7 @@
 Este documento detalha os casos de teste realizados para garantir a funcionalidade, segurança e robustez do sistema, conforme os requisitos técnicos estabelecidos.
 
 ## 1. Metodologia
-Foram realizados Testes de Caixa Preta (validação de entradas e saídas) e Testes de Integração (comunicação entre Frontend, API e Banco de Dados MySQL).
+Foram realizados Testes de Integração para validar a comunicação completa entre o Frontend, a API e o Banco de Dados MySQL em ambiente local
 
 ## 2. Casos de Teste
 

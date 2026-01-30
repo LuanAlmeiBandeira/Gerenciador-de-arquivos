@@ -52,7 +52,7 @@ erDiagram
 - Delete: Remoção de arquivos do sistema e do banco de dados.
 
 ## Acessibilidade e Segurança
-- WCAG: Interface operável via teclado, uso de rótulos descritivos (aria-label) e contraste adequado.
+- Web Content Accessibility Guidelines (WCAG): Interface operável via teclado, uso de rótulos descritivos (aria-label) e contraste adequado.
 
 - Segurança: Proteção de rotas privadas, expiração de tokens e armazenamento seguro de dados sensíveis.
 
@@ -66,14 +66,6 @@ erDiagram
 - Configurar o Banco de Dados: Certifique-se de que o MySQL está rodando e as credenciais no arquivo config/database.js estão corretas.
 
 - Inicializar as Tabelas:
-- sudo apt update
-- sudo apt install mysql-server
-- sudo mysql
-- ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'Senha@Forte2026';
-- FLUSH PRIVILEGES;
-- CREATE DATABASE gerenciador;
-- SHOW DATABASES;
-- exit;
 - npm run db:init
 
 - Rodar o servidor de desenvolvimento:
