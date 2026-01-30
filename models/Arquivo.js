@@ -8,9 +8,9 @@ const Arquivo = sequelize.define("Arquivo", {
     type: DataTypes.ENUM(
       'CPF',
       'RG/CIN',
-      'Comprovante Escolar-Histórico', // Ajustado para bater com o frontend
-      'Certidão de Nascimento',        // Ajustado para bater com o frontend
-      'Comprovante de Residência'      // Ajustado para bater com o frontend
+      'Comprovante Escolar-Histórico', 
+      'Certidão de Nascimento',        
+      'Comprovante de Residência'      
     ),
     allowNull: false
   },
@@ -25,4 +25,4 @@ const Arquivo = sequelize.define("Arquivo", {
 Arquivo.belongsTo(Usuario, { foreignKey: "usuario_id" });
 Usuario.hasMany(Arquivo, { foreignKey: "usuario_id" });
 
-export default Arquivo; // ✅ export default para ESM
+export default Arquivo;

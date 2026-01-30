@@ -12,7 +12,7 @@ const upload = multer({
       
       // 2. Pegar o CPF e Tipo que o frontend enviou
       const cpf = req.body.cpf || 'sem-cpf';
-      const tipo = (req.body.tipo_documento || 'doc').replace(/\//g, '-'); // Troca / por - (ex: RG/CIN vira RG-CIN)
+      const tipo = (req.body.tipo_documento || 'doc').replace(/\//g, '-');
 
       // 3. Criar um nome limpo: cpf-tipo-timestamp.pdf
       const extension = originalName.split('.').pop();
@@ -50,7 +50,6 @@ apiRoute.post(async (req, res) => {
       usuario_id: usuario.id,
       tipo_documento: tipo_documento,
       nome_original: Buffer.from(req.file.originalname, 'latin1').toString('utf8'),
-      // AQUI: Pegamos o nome exato que o Multer gerou para o disco
       nome_armazenado: req.file.filename, 
       caminho_arquivo: `/uploads/${req.file.filename}`, 
       tamanho: req.file.size,

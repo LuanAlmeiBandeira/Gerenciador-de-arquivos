@@ -243,12 +243,12 @@ export default function Home() {
                 .arquivos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
                 .card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
                 .btn-busca {
-                background: #f6f7f8ff; /* Cor azul (exemplo) */
+                background: #f6f7f8ff;
                 color: black;
                 }
 
                 .btn-busca:hover {
-                background: #e8ebf0ff; /* Cor um pouco mais escura ao passar o mouse */
+                background: #e8ebf0ff;
                 }
             `}</style>
         </div>

@@ -21,7 +21,7 @@ handler.put(async (req, res) => {
   }
 });
 
-// DELETE: (Aproveite para garantir que o delete está aqui)
+// DELETE
 handler.delete(async (req, res) => {
   const { id } = req.query;
   try {
